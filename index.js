@@ -4,26 +4,33 @@ const poll = require('promise-poller').default;
 const user = require('./login.json');
 
 const siteDetails = {
-  pageurl: 'https://gshow.globo.com/realities/bbb/bbb21/votacao/paredao-bbb21-vote-para-eliminar-arthur-gilberto-ou-karol-conka-838ec4d5-7d17-4263-a335-29e13c3a769b.ghtml'
-}
+  pageurl:
+    'https://gshow.globo.com/realities/bbb/bbb21/votacao/paredao-bbb21-vote-para-eliminar-arthur-gilberto-ou-karol-conka-838ec4d5-7d17-4263-a335-29e13c3a769b.ghtml',
+};
 
+// const width = 1824,
+//   height = 2600;
 const chromeOptions = {
   executablePath: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
   headless: false,
   slowMo: 10,
-  defaultViewport: null
+  defaultViewport: null,
 };
 
 (async function main() {
   const browser = await puppeteer.launch(chromeOptions);
 
   const page = await browser.newPage();
-  page.on('console', consoleObj => console.log(consoleObj.text()));
+  page.on('console', (consoleObj) => console.log(consoleObj.text()));
 
   await Promise.all([
     page.waitForNavigation(),
-    page.goto('https://login.globo.com/login/6694?url=https://gshow.globo.com/realities/bbb/bbb21/votacao/paredao-bbb21-vote-para-eliminar-arthur-gilberto-ou-karol-conka-838ec4d5-7d17-4263-a335-29e13c3a769b.ghtml&tam=WIDGET'),
-    page.waitForSelector('#login', { waitUntil: ["networkidle0", "domcontentloaded"] }),
+    page.goto(
+      'https://login.globo.com/login/6694?url=https://gshow.globo.com/realities/bbb/bbb21/votacao/paredao-bbb21-vote-para-eliminar-arthur-gilberto-ou-karol-conka-838ec4d5-7d17-4263-a335-29e13c3a769b.ghtml&tam=WIDGET'
+    ),
+    page.waitForSelector('#login', {
+      waitUntil: ['networkidle0', 'domcontentloaded'],
+    }),
   ]);
 
   await page.type('#login', user.user);
@@ -32,35 +39,37 @@ const chromeOptions = {
   const [buttonLogin] = await page.$x("//button[contains(., 'Entrar')]");
 
   if (buttonLogin) {
-    await Promise.all([
-      buttonLogin.click(),
-      page.waitForNavigation(),
-    ]);
+    await Promise.all([buttonLogin.click(), page.waitForNavigation()]);
   }
 
-
-
   await page.waitForXPath("//div[contains(., 'Karol Conká')]");
-  const cardKarol = await page.$x("//div[contains(., 'Karol Conká')]");
 
+  const reducedClazz = await page.evaluate((page) => {
+    let divs = [...document.querySelectorAll('div')];
 
-  const teste = page.evaluate((page) => {
-    let aTags = Array.from(document.querySelectorAll('div'));
-
-    return aTags.map(async (data) => {
-      if (data.innerText == 'Karol Conká') {
-        data.classList = 'Teste'
-        console.log(data.innerText)
-        await Promise.all([
-          data.click(),
-        ]);
+    return divs.reduce(function (filtered, div) {
+      if (div.innerText == 'Karol Conká') {
+        filtered.push(div.className);
       }
-      return data.innerText
-    })
-  })
+      return filtered;
+    }, []);
+  });
 
-  await teste;
-  // console.log(teste)
+  const elements = await reducedClazz
+    .map((data) => {
+      return page.$('.' + data);
+    })
+    .reduce(async (previousPromise, nextAsyncFunction) => {
+      await previousPromise;
+      const result = await nextAsyncFunction;
+      return result;
+    }, Promise.resolve());
+
+  elements.evaluate((domElement) => {
+    domElement.click();
+    // etc ...
+  });
+
   // const teste = await page.evaluate((val) => {
   //   let aTags = Array.from(document.querySelectorAll('div'));
   //   var searchText = "Karol Conká";
@@ -80,7 +89,7 @@ const chromeOptions = {
   // await page.evaluate(`document.getElementById("g-recaptcha-response").innerHTML="${response}";`);
 
   // page.click('#register-form button[type=submit]');
-})()
+})();
 
 // async function initiateCaptchaRequest(apiKey) {
 //   const formData = {
