@@ -38,11 +38,7 @@ const chromeOptions = {
     ]);
   }
 
-
-
   await page.waitForXPath("//div[contains(., 'Karol Conká')]");
-  const cardKarol = await page.$x("//div[contains(., 'Karol Conká')]");
-
 
   const teste = page.evaluate((page) => {
     let aTags = Array.from(document.querySelectorAll('div'));
