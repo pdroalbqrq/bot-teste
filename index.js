@@ -1,114 +1,92 @@
 const puppeteer = require('puppeteer');
-const request = require('node-fetch');
-const poll = require('promise-poller').default;
 const user = require('./login.json');
 
+const perfil = "stonedyoda";
+
 const siteDetails = {
-  pageurl: 'https://gshow.globo.com/realities/bbb/bbb21/votacao/paredao-bbb21-vote-para-eliminar-arthur-gilberto-ou-karol-conka-838ec4d5-7d17-4263-a335-29e13c3a769b.ghtml'
-}
+  pageurl:
+    `https://www.instagram.com/${perfil}/`,
+};
 
 const chromeOptions = {
   executablePath: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
   headless: false,
   slowMo: 10,
-  defaultViewport: null
+  defaultViewport: null,
 };
 
 (async function main() {
   const browser = await puppeteer.launch(chromeOptions);
 
   const page = await browser.newPage();
-  page.on('console', consoleObj => console.log(consoleObj.text()));
+  page.on('console', (consoleObj) => console.log(consoleObj.text()));
+
+  openFollowers(page, true, '.-nal3');
+
+  await page.waitForSelector('input[name="username"]');
+
+  await page.type('input[name="username"]', user.user);
+  await page.type('input[name="password"]', user.pass);
+
+  await page.click('button[type="submit"]');
 
   await Promise.all([
-    page.waitForNavigation(),
-    page.goto('https://login.globo.com/login/6694?url=https://gshow.globo.com/realities/bbb/bbb21/votacao/paredao-bbb21-vote-para-eliminar-arthur-gilberto-ou-karol-conka-838ec4d5-7d17-4263-a335-29e13c3a769b.ghtml&tam=WIDGET'),
-    page.waitForSelector('#login', { waitUntil: ["networkidle0", "domcontentloaded"] }),
+    page.waitForNavigation({
+      waitUntil: ['networkidle0', 'domcontentloaded', 'load'],
+    }),
   ]);
 
-  await page.type('#login', user.user);
-  await page.type('#password', user.pass);
+  const existSection = await page.$(".ABCxa");
 
-  const [buttonLogin] = await page.$x("//button[contains(., 'Entrar')]");
-
-  if (buttonLogin) {
-    await Promise.all([
-      buttonLogin.click(),
-      page.waitForNavigation(),
-    ]);
+  if (existSection) {
+    const buttonClose = await page.$("button[type='button']");
+    await buttonClose.click()
   }
 
-  await page.waitForXPath("//div[contains(., 'Karol Conká')]");
+  await openFollowers(page, false, '.-nal3');
+  getFollowers(page, '.FPmhX.notranslate')
 
-  const teste = page.evaluate((page) => {
-    let aTags = Array.from(document.querySelectorAll('div'));
+})();
 
-    return aTags.map(async (data) => {
-      if (data.innerText == 'Karol Conká') {
-        data.classList = 'Teste'
-        console.log(data.innerText)
-        await Promise.all([
-          data.click(),
-        ]);
+
+async function openFollowers(page, firstTime, selector) {
+
+  await Promise.all([
+    page.waitForNavigation({
+      waitUntil: ['networkidle0', 'domcontentloaded', 'load'],
+    }),
+    firstTime ? page.goto(
+      siteDetails.pageurl
+    ) : null,
+    page.waitForSelector(selector, {
+      waitUntil: ['networkidle0', 'domcontentloaded', 'load'],
+    }),
+  ]);
+
+  await page.evaluate((selector) => {
+    const followButton = document.querySelectorAll(selector)[1];
+    followButton.click();
+  }, selector);
+
+}
+
+async function getFollowers(page, selector) {
+  await Promise.all([
+    page.waitForSelector(selector, {
+      waitUntil: ['networkidle0', 'domcontentloaded', 'load'],
+    }),
+  ]);
+
+  await page.evaluate(async (selector) => {
+    let followers = [];
+    const followersList = Array.from(document.querySelectorAll(selector));
+    followersList.forEach(follower => {
+      if (followers.length == 0) {
+        followers.push(follower.innerText)
       }
-      return data.innerText
-    })
-  })
+      followers = followers.filter(f => f != follower.innerText).map(data => data.innerText);
+    });
 
-  await teste;
-  // console.log(teste)
-  // const teste = await page.evaluate((val) => {
-  //   let aTags = Array.from(document.querySelectorAll('div'));
-  //   var searchText = "Karol Conká";
-  //   var found;
-  //   console.log(val);
-  //   let links = aTags.map(data => {
-  //     return data.innerHTML
-  //   })
-  //   return links;
-  // });
+  }, selector);
 
-  // if (cardKarol) {
-  //   await cardKarol.click()
-  // }
-  // const response = await pollForRequestResults(apiKey, requestId);
-
-  // await page.evaluate(`document.getElementById("g-recaptcha-response").innerHTML="${response}";`);
-
-  // page.click('#register-form button[type=submit]');
-})()
-
-// async function initiateCaptchaRequest(apiKey) {
-//   const formData = {
-//     method: 'userrecaptcha',
-//     googlekey: siteDetails.sitekey,
-//     key: apiKey,
-//     pageurl: siteDetails.pageurl,
-//     json: 1
-//   };
-//   const response = await request.post('http://2captcha.com/in.php', { form: formData });
-//   return JSON.parse(response).request;
-// }
-
-// async function pollForRequestResults(key, id, retries = 30, interval = 1500, delay = 15000) {
-//   await timeout(delay);
-//   return poll({
-//     taskFn: requestCaptchaResults(key, id),
-//     interval,
-//     retries
-//   });
-// }
-
-// function requestCaptchaResults(apiKey, requestId) {
-//   const url = `http://2captcha.com/res.php?key=${apiKey}&action=get&id=${requestId}&json=1`;
-//   return async function () {
-//     return new Promise(async function (resolve, reject) {
-//       const rawResponse = await request.get(url);
-//       const resp = JSON.parse(rawResponse);
-//       if (resp.status === 0) return reject(resp.request);
-//       resolve(resp.request);
-//     });
-//   }
-// }
-
-// const timeout = millis => new Promise(resolve => setTimeout(resolve, millis))
+}
