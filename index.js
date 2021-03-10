@@ -20,38 +20,60 @@ const chromeOptions = {
 
   const page = await browser.newPage();
   page.on('console', (consoleObj) => console.log(consoleObj.text()));
-
   openFollowers(page, true, '.-nal3');
-
   await page.waitForSelector('input[name="username"]');
 
-  await page.type('input[name="username"]', user.user);
-  await page.type('input[name="password"]', user.pass);
+  await login(page, user);
 
+  await openFollowers(page, false, '.-nal3');
+  await loadMoreFollowers(page, '.isgrP', browser);
+})();
+
+async function login(page, { user, pass }) {
+  await page.type('input[name="username"]', user);
+  await page.type('input[name="password"]', pass);
   await page.click('button[type="submit"]');
+  await acceptToStoreUser(page)
+}
 
-  await Promise.all([
-    page.waitForNavigation({
-      waitUntil: ['networkidle0', 'domcontentloaded', 'load'],
-    }),
-  ]);
+async function acceptToStoreUser(page) {
+  await page.waitForNavigation({
+    waitUntil: ['networkidle0', 'domcontentloaded', 'load'],
+  });
 
   const existSection = await page.$(".ABCxa");
-
   if (existSection) {
     const buttonClose = await page.$("button[type='button']");
     await buttonClose.click()
   }
-
-  await openFollowers(page, false, '.-nal3');
-  getFollowers(page, '.FPmhX.notranslate')
-
-})();
-
+}
 
 async function openFollowers(page, firstTime, selector) {
+  await waitPageToLoad(page, firstTime, selector);
+  page.evaluate((selector) => {
+    const followButton = document.querySelectorAll(selector)[1];
+    followButton.click();
+  }, selector);
+}
 
-  await Promise.all([
+async function getFollowers(page, selector) {
+  return await page.$$eval(selector, (usersList) => {
+    return usersList.map(user => user.innerText)
+  });
+}
+
+// NÃO ESTÁ RODANDO AINDA
+async function loadMoreFollowers(page, selector, browser) {
+  const section = await page.$(selector)
+  if (section) {
+    await getFollowers(page, '.FPmhX.notranslate')
+    console.log(section);
+
+  }
+}
+
+function waitPageToLoad(page, firstTime, selector) {
+  return Promise.all([
     page.waitForNavigation({
       waitUntil: ['networkidle0', 'domcontentloaded', 'load'],
     }),
@@ -62,31 +84,4 @@ async function openFollowers(page, firstTime, selector) {
       waitUntil: ['networkidle0', 'domcontentloaded', 'load'],
     }),
   ]);
-
-  await page.evaluate((selector) => {
-    const followButton = document.querySelectorAll(selector)[1];
-    followButton.click();
-  }, selector);
-
-}
-
-async function getFollowers(page, selector) {
-  await Promise.all([
-    page.waitForSelector(selector, {
-      waitUntil: ['networkidle0', 'domcontentloaded', 'load'],
-    }),
-  ]);
-
-  await page.evaluate(async (selector) => {
-    let followers = [];
-    const followersList = Array.from(document.querySelectorAll(selector));
-    followersList.forEach(follower => {
-      if (followers.length == 0) {
-        followers.push(follower.innerText)
-      }
-      followers = followers.filter(f => f != follower.innerText).map(data => data.innerText);
-    });
-
-  }, selector);
-
 }
