@@ -4,8 +4,8 @@ const user = require('./login.json');
 const perfil = "stonedyoda";
 
 const siteDetails = {
-  pageurl:
-    `https://www.instagram.com/${perfil}/`,
+  pageurl: (profile) =>
+    `https://www.instagram.com/${profile}/`,
 };
 
 const chromeOptions = {
@@ -24,9 +24,8 @@ const chromeOptions = {
   await page.waitForSelector('input[name="username"]');
 
   await login(page, user);
-
   await openFollowers(page, false, '.-nal3');
-  await loadMoreFollowers(page, '.isgrP', browser);
+  await loadMoreFollowers(page, browser, 60);
 })();
 
 async function login(page, { user, pass }) {
@@ -62,14 +61,19 @@ async function getFollowers(page, selector) {
   });
 }
 
-// NÃO ESTÁ RODANDO AINDA
-async function loadMoreFollowers(page, selector, browser) {
-  const section = await page.$(selector)
-  if (section) {
-    await getFollowers(page, '.FPmhX.notranslate')
-    console.log(section);
-
-  }
+async function loadMoreFollowers(page, browser, randomNumber) {
+  await waitPageToLoad(page, false, '.FPmhX.notranslate');
+  let users = [];
+  const interval = await setInterval(async () => {
+    await page.$eval('.isgrP', (el) => el.scrollBy(0, el.scrollHeight));
+    users = await getFollowers(page, '.FPmhX.notranslate');
+    if (users.length >= randomNumber) {
+      clearInterval(interval);
+      const pageFollowerProfile = await browser.newPage();
+      await pageFollowerProfile.goto(siteDetails.pageurl(users[0]))
+    }
+    console.log(users.length)
+  }, 500)
 }
 
 function waitPageToLoad(page, firstTime, selector) {
@@ -78,7 +82,7 @@ function waitPageToLoad(page, firstTime, selector) {
       waitUntil: ['networkidle0', 'domcontentloaded', 'load'],
     }),
     firstTime ? page.goto(
-      siteDetails.pageurl
+      siteDetails.pageurl(perfil)
     ) : null,
     page.waitForSelector(selector, {
       waitUntil: ['networkidle0', 'domcontentloaded', 'load'],
